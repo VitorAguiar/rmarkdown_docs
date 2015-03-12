@@ -1,0 +1,105 @@
+---
+title: "Caixeta" 
+date: ""
+output: 
+  html_document: 
+ 
+fontsize: 14pt
+---
+
+```{r, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(comment="")
+```
+
+Vou usar o pacote `dplyr` para manipular o dado:
+```{r message=FALSE}
+library(dplyr)
+
+# URL do arquivo
+file_url <-
+  "http://ecologia.ib.usp.br/bie5782/lib/exe/fetch.php?media=dados:caixeta.csv"
+
+# Ler o arquivo e ordenar o dado por local, árvore e fuste.
+caixeta <- 
+  read.csv(file_url) %>%
+  arrange(local, arvore, fuste) %>%
+  tbl_df()
+```
+
+### Espécies
+
+Vamos checar se uma mesma árvore (mesmo `local` e `arvore`) pode estar com 
+valores de `especie` diferentes no dado `caixeta`.
+```{r}
+caixeta %>%
+  group_by(local, arvore) %>%
+  summarize(n_especies = n_distinct(especie)) %>%
+  filter(n_especies > 1)
+```  
+
+De fato, vemos que há 2 árvores classificadas em 2 espécies diferentes.
+Olhando a árvore 117 do local _jureia_:
+```{r}
+filter(caixeta, local == "jureia", arvore == 117)
+```
+
+E a árvore 16 do local _retiro_:
+```{r}
+filter(caixeta, local == "retiro", arvore == 16)
+```
+
+### Alturas
+
+Será que uma mesma árvore pode estar com valores de altura (`h`) diferentes?
+```{r}
+caixeta %>%
+  group_by(local, arvore) %>%
+  summarize(n_alturas = n_distinct(h)) %>%
+  filter(n_alturas > 1)
+```
+
+De fato, podemos observar que há 3 árvores com 2 valores diferentes para altura.
+
+Em alguns fustes, elas tem valores de `h` diferentes. Vamos checar cada uma.
+
+Já havíamos visto a árvore 117 do local _jureia_ no problema das espécies.
+```{r}
+filter(caixeta, local == "jureia", arvore == 117)
+```
+
+A árvore 26 do local _retiro_ tem um `h` diferente para o fuste 7:
+```{r}
+filter(caixeta, local == "retiro", arvore == 26)
+```
+
+Já a árvore 28 do local _retiro_ tem 2 entradas para os fustes 1 e 2, mas com 
+valores de `h` diferentes:
+```{r}
+filter(caixeta, local == "retiro", arvore == 28)
+```
+
+### Visualização
+
+Ao plotar a `cap` pela `h`, percebemos que há valores muito extremos:
+```{r plot}
+library(ggplot2)
+
+caixeta %>%
+  ggplot(aes(cap, h)) + geom_point()
+```
+
+Checando os valores mais extremos para `cap`:
+```{r}
+caixeta %>%
+  arrange(desc(cap)) %>%
+  head()
+```
+
+Vamos também checar os valores extremos de `h`:
+```{r}
+caixeta %>%
+  arrange(desc(h)) %>%
+  head()
+```
+
+Parecem OK?
