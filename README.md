@@ -1,3 +1,3 @@
 # rmarkdown_docs
 
-Docs created with Rmarkdown for educational purposes.
+Rmarkdown docs for educational purposes.
