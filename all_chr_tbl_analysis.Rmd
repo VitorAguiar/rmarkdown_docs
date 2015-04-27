@@ -1,0 +1,13 @@
+Missing gene names in all.chr.table at exonic positions
+=========================================================
+
+```{r comment=NA, message=FALSE}
+library(dplyr)
+load("/raid/genevol/1kg/r_objects/all.chr.table.RData")
+
+all_chr_tbl <- tbl_df(all.chr.table)
+
+all_chr_tbl %>% 
+  filter(general_func == "exonic", !is.na(general_func), is.na(gene)) %>% 
+  select(ID, POS, CHR, gene, general_func, exonic_func)
+```
