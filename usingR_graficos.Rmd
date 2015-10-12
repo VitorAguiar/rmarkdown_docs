@@ -1,12 +1,14 @@
 ---
 title: "Exercício 5: Gráficos, um tutorial com ggplot2"
 author: "Vitor Aguiar"
-output: html_document
+output:
+  md_document:
+      variant: markdown_github
 ---
 
 [\@vitoaguiar](https://twitter.com/vitoaguiar)
 
-Neste tutorial, vamos usar o pacote `ggplot2` para criar os gráficos do Exercício 5 do curso [_Using R_ do Departamento de Ecologia da Universidade de São Paulo](http://ecologia.ib.usp.br/bie5782/doku.php?id=start). 
+Neste tutorial, vamos usar o pacote `ggplot2` para criar os gráficos do Exercício 5 do curso [_Using R_ do Departamento de Ecologia da Universidade de São Paulo](httk://ecologia.ib.usp.br/bie5782/doku.php?id=start). 
 Se você não tem esse pacote instalado, a primeira coisa a fazer é instalá-lo e carregá-lo na sessão de R. 
 ```{r message=FALSE, results='hide', eval=FALSE}
 install.packages("ggplot2")
