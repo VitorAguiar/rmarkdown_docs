@@ -1,0 +1,28 @@
+
+``` r
+library(dplyr, warn.conflicts = FALSE)
+library(tidyr, warn.conflicts = FALSE)
+library(ggplot2)
+
+# F inbreeding
+F_inb <- -0.6
+
+# allele frequency
+f <- seq(0.05, 0.95, by = 0.005)
+
+# genotype frequencies
+f11 <- (1 - F_inb)*f^2 + F_inb*f
+f12<- (1 - F_inb)*2*f*(1 - f)
+f22 <- (1 - F_inb)*(1 - f)^2 + F_inb*(1 - f)
+
+data_frame(allele_freq = f, f11 = f11, f12 = f12, f22 = f22) %>%
+gather(genotype, genotype_freq, f11:f22) %>%
+ggplot(aes(x = allele_freq, y = genotype_freq, group = genotype)) +
+  geom_line(color = "white", size = 2) +
+  scale_x_continuous(expand = c(0, 0)) + 
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_void() +
+  theme(panel.background = element_rect(fill = "#211C3F")) 
+```
+
+![](hwe_files/figure-markdown_github/unnamed-chunk-1-1.png)

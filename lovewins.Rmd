@@ -1,0 +1,18 @@
+---
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(data.frame(p = 1:6), aes(x = 1, y = p, fill = p)) +
+  geom_raster() + 
+  scale_fill_gradientn(colours = c("purple", "blue", "darkgreen", 
+                                   "yellow", "orange", "red")) +
+  theme_void() +
+  guides(fill = FALSE)
+```
