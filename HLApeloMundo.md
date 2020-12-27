@@ -1,0 +1,104 @@
+HLA pelo mundo
+================
+
+``` r
+library(tidyverse)
+library(rvest)
+#instalações também requeridas: hexbin e cowplot
+```
+
+``` r
+# obter frequências alélicas do allelefrequencies.net
+get_frequency <- function(allele) {
+    
+    hlaurl <- 
+        "http://www.allelefrequencies.net/hla6006a_scr.asp?hla_selection=%s"
+
+    hlahtml <- hlaurl %>%
+        sprintf(sub("HLA-", "", allele)) %>%
+        read_html()
+    
+    nodes <- html_nodes(hlahtml, "table")
+    
+    nodes[[3]] %>%
+        html_table(fill = TRUE, header = TRUE) %>%
+        as_tibble() %>%
+        select(allele = Allele, 
+               pop = Population, 
+               f = `Allele Frequency`,
+               n = `Sample Size`,
+               location = Location) %>%
+        mutate(n = as.integer(gsub(",", "", n))) %>%
+        separate(location, 
+                c("deg_lat", "min_lat", "hem_lat", "deg_lon", "min_lon", "hem_lon"), 
+                sep = "_", convert = TRUE) %>%
+        mutate(across(starts_with("min"), ~.x/60),
+               lat = deg_lat + min_lat,
+               long = deg_lon + min_lon,
+               lat = ifelse(hem_lat == "S", -lat, lat),
+               long = ifelse(hem_lon == "W", -long, long)) %>%
+        select(allele, pop, f, n, long, lat)
+}
+
+# plotar mapa
+plotmap <- function(df_x) {
+    ggplot() +
+        geom_map(data = world, map = world,
+                 aes(long, lat, map_id = region),
+                 color = "white", fill = "grey75", size = .1) +
+        stat_summary_hex(data = df_x, 
+                         aes(long, lat, z = f)) +
+        scale_fill_continuous(NULL, type = "viridis",
+                              labels = scales::percent,
+                              breaks = scales::pretty_breaks(3),
+                              guide = guide_colourbar(direction = "horizontal",
+                                                      barwidth = 10,
+                                                      barheight = .25)) +
+        facet_wrap(~allele, ncol = 2) +
+        theme_bw() +
+        theme(axis.ticks = element_blank(),
+              axis.text = element_blank(),
+              axis.title = element_blank(),
+              panel.grid = element_blank(),
+              legend.position = "bottom",
+              legend.margin = margin(0, 0, 0, 0),
+              legend.box.margin = margin(-10, -10, 0, -10),
+              text = element_text(size = 14, family = "Times"))
+}
+```
+
+#### Obter as frequências alélicas
+
+As frequências são capturadas do site do allelefrequencies.net.
+
+Não são consideradas frequências calculadas a partir de frequências
+fenotípicas assumindo proporções Hardy-Weinberg, apenas as obtidas
+diretamente.
+
+Quando há diferentes amostras para a mesma localização (latitude e
+longitude), uma média da frequência ponderada pelo tamanho amostral é
+calculada.
+
+``` r
+allele_freqs <- c("B*15:03", "A*24:02", "B*14:02", "B*46:01") %>%
+    map_df(get_frequency) %>%
+    drop_na() %>%
+    mutate(allele = fct_inorder(allele)) %>%
+    group_by(allele, long, lat) %>%
+    summarise(f = weighted.mean(f, n)) %>%
+    group_by(allele) %>%
+    group_split()
+```
+
+Os pontos de cada amostragem são projetados no mapa. Para pontos muito
+próximos, é tomada uma média das frequências.
+
+``` r
+world <- map_data("world")
+
+plot_list <- map(allele_freqs, plotmap)
+
+cowplot::plot_grid(plotlist = plot_list, ncol = 2)
+```
+
+![](frequencies_files/figure-gfm/plot-1.png)<!-- -->
