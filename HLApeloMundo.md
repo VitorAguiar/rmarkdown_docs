@@ -101,4 +101,4 @@ plot_list <- map(allele_freqs, plotmap)
 cowplot::plot_grid(plotlist = plot_list, ncol = 2)
 ```
 
-![](frequencies_files/figure-gfm/plot-1.png)<!-- -->
+![](HLApeloMundo_files/figure-gfm/plot-1.png)<!-- -->
