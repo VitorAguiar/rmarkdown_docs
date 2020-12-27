@@ -10,7 +10,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, comment = "
 ```{r pkgs}
 library(tidyverse)
 library(rvest)
-#instalações também requeridas: hexbin e cowplot
+#instalações também requeridas: 
+# install.packages(c("hexbin", "cowplot", "maps"))
 ```
 
 ```{r functions}
@@ -34,24 +35,15 @@ get_frequency <- function(allele) {
                f = `Allele Frequency`,
                n = `Sample Size`,
                location = Location) %>%
-        mutate(n = as.integer(gsub(",", "", n))) %>%
-        separate(location, 
-                c("deg_lat", "min_lat", "hem_lat", "deg_lon", "min_lon", "hem_lon"), 
-                sep = "_", convert = TRUE) %>%
-        mutate(across(starts_with("min"), ~.x/60),
-               lat = deg_lat + min_lat,
-               long = deg_lon + min_lon,
-               lat = ifelse(hem_lat == "S", -lat, lat),
-               long = ifelse(hem_lon == "W", -long, long)) %>%
-        select(allele, pop, f, n, long, lat)
+        mutate(n = as.integer(gsub(",", "", n)))
 }
 
-# plotar mapa
+# plotar mapa com hexagonos
 plotmap <- function(df_x) {
     ggplot() +
         geom_map(data = world, map = world,
                  aes(long, lat, map_id = region),
-                 color = "white", fill = "grey75", size = .1) +
+                 color = "white", fill = "grey85", size = .1) +
         stat_summary_hex(data = df_x, 
                          aes(long, lat, z = f)) +
         scale_fill_continuous(NULL, type = "viridis",
@@ -79,27 +71,58 @@ As frequências são capturadas do site do allelefrequencies.net.
 
 Não são consideradas frequências calculadas a partir de frequências fenotípicas assumindo proporções Hardy-Weinberg, apenas as obtidas diretamente. 
 
-Quando há diferentes amostras para a mesma localização (latitude e longitude), uma média da frequência ponderada pelo tamanho amostral é calculada.
-
 ```{r data}
 allele_freqs <- c("B*15:03", "A*24:02", "B*14:02", "B*46:01") %>%
     map_df(get_frequency) %>%
     drop_na() %>%
-    mutate(allele = fct_inorder(allele)) %>%
-    group_by(allele, long, lat) %>%
-    summarise(f = weighted.mean(f, n)) %>%
-    group_by(allele) %>%
-    group_split()
+    mutate(allele = fct_inorder(allele))
+
+allele_freqs
 ```
 
-Os pontos de cada amostragem são projetados no mapa. Para pontos muito próximos, é tomada uma média das frequências.
+Vamos fazer algumas transformações no dado.
 
-```{r plot, fig.width=10, fig.height=7}
+Primeiro precisamos converter os dados de localização pra latitude e longitude.
+
+```{r}
+allele_freqs_tidy <- allele_freqs %>%
+    separate(location, 
+             c("deg_lat", "min_lat", "hem_lat", "deg_lon", "min_lon", "hem_lon"), 
+             sep = "_", convert = TRUE) %>%
+    mutate(across(starts_with("min"), ~.x/60),
+           lat = deg_lat + min_lat,
+           long = deg_lon + min_lon,
+           lat = ifelse(hem_lat == "S", -lat, lat),
+           long = ifelse(hem_lon == "W", -long, long)) %>%
+    select(allele, pop, f, n, long, lat)
+
+allele_freqs_tidy
+```
+
+E então, quando há diferentes amostras para a mesma localização (latitude e longitude), vamos calcular uma média da frequência ponderada pelo tamanho amostral.
+
+```{r}
+allele_freqs_final <- allele_freqs_tidy %>%
+    group_by(allele, long, lat) %>%
+    summarise(f = weighted.mean(f, n),
+              n = sum(n)) %>%
+    ungroup()
+```
+
+#### Gráficos
+
+Os pontos de cada amostragem são projetados no mapa. Para pontos muito próximos, é tomada uma média das frequências (em bins).
+
+```{r plot}
 world <- map_data("world")
 
-plot_list <- map(allele_freqs, plotmap)
+plot_list <- allele_freqs_final %>%
+    split(.$allele) %>%
+    map(plotmap)
 
-cowplot::plot_grid(plotlist = plot_list, ncol = 2)
+hlamap <- cowplot::plot_grid(plotlist = plot_list, ncol = 2)
+ggsave("frequency.png", hlamap, dpi = 300, width = 7, height = 5)
+knitr::include_graphics("frequency.png")
 ```
 
 

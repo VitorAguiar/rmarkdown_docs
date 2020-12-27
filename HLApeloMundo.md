@@ -4,7 +4,8 @@ HLA pelo mundo
 ``` r
 library(tidyverse)
 library(rvest)
-#instalações também requeridas: hexbin e cowplot
+#instalações também requeridas: 
+# install.packages(c("hexbin", "cowplot", "maps"))
 ```
 
 ``` r
@@ -28,24 +29,15 @@ get_frequency <- function(allele) {
                f = `Allele Frequency`,
                n = `Sample Size`,
                location = Location) %>%
-        mutate(n = as.integer(gsub(",", "", n))) %>%
-        separate(location, 
-                c("deg_lat", "min_lat", "hem_lat", "deg_lon", "min_lon", "hem_lon"), 
-                sep = "_", convert = TRUE) %>%
-        mutate(across(starts_with("min"), ~.x/60),
-               lat = deg_lat + min_lat,
-               long = deg_lon + min_lon,
-               lat = ifelse(hem_lat == "S", -lat, lat),
-               long = ifelse(hem_lon == "W", -long, long)) %>%
-        select(allele, pop, f, n, long, lat)
+        mutate(n = as.integer(gsub(",", "", n)))
 }
 
-# plotar mapa
+# plotar mapa com hexagonos
 plotmap <- function(df_x) {
     ggplot() +
         geom_map(data = world, map = world,
                  aes(long, lat, map_id = region),
-                 color = "white", fill = "grey75", size = .1) +
+                 color = "white", fill = "grey85", size = .1) +
         stat_summary_hex(data = df_x, 
                          aes(long, lat, z = f)) +
         scale_fill_continuous(NULL, type = "viridis",
@@ -75,30 +67,92 @@ Não são consideradas frequências calculadas a partir de frequências
 fenotípicas assumindo proporções Hardy-Weinberg, apenas as obtidas
 diretamente.
 
-Quando há diferentes amostras para a mesma localização (latitude e
-longitude), uma média da frequência ponderada pelo tamanho amostral é
-calculada.
-
 ``` r
 allele_freqs <- c("B*15:03", "A*24:02", "B*14:02", "B*46:01") %>%
     map_df(get_frequency) %>%
     drop_na() %>%
-    mutate(allele = fct_inorder(allele)) %>%
-    group_by(allele, long, lat) %>%
-    summarise(f = weighted.mean(f, n)) %>%
-    group_by(allele) %>%
-    group_split()
+    mutate(allele = fct_inorder(allele))
+
+allele_freqs
 ```
 
+    # A tibble: 1,062 x 5
+       allele  pop                                     f     n location        
+       <fct>   <chr>                               <dbl> <int> <chr>           
+     1 B*15:03 American Samoa                      0.01     51 14_18_S_170_42_W
+     2 B*15:03 Australia New South Wales Caucasian 0.004   134 33_0_S_146_0_E  
+     3 B*15:03 Australia Yuendumu Aborigine        0       191 22_15_S_131_47_E
+     4 B*15:03 Azores Central Islands              0.009    59 38_0_N_28_0_W   
+     5 B*15:03 Azores Oriental Islands             0        43 36_58_N_25_6_W  
+     6 B*15:03 Azores Terceira Island              0.024   130 38_44_N_27_19_W 
+     7 B*15:03 Brazil  Puyanawa                    0.037   150 10_52_S_53_5_W  
+     8 B*15:03 Brazil Belo Horizonte Caucasian     0.032    95 19_55_S_43_56_W 
+     9 B*15:03 Brazil Mixed                        0.014   108 23_10_S_47_48_W 
+    10 B*15:03 Brazil Vale do Ribeira Quilombos    0       144 24_36_S_48_15_W 
+    # … with 1,052 more rows
+
+Vamos fazer algumas transformações no dado.
+
+Primeiro precisamos converter os dados de localização pra latitude e
+longitude.
+
+``` r
+allele_freqs_tidy <- allele_freqs %>%
+    separate(location, 
+             c("deg_lat", "min_lat", "hem_lat", "deg_lon", "min_lon", "hem_lon"), 
+             sep = "_", convert = TRUE) %>%
+    mutate(across(starts_with("min"), ~.x/60),
+           lat = deg_lat + min_lat,
+           long = deg_lon + min_lon,
+           lat = ifelse(hem_lat == "S", -lat, lat),
+           long = ifelse(hem_lon == "W", -long, long)) %>%
+    select(allele, pop, f, n, long, lat)
+
+allele_freqs_tidy
+```
+
+    # A tibble: 1,062 x 6
+       allele  pop                                     f     n   long   lat
+       <fct>   <chr>                               <dbl> <int>  <dbl> <dbl>
+     1 B*15:03 American Samoa                      0.01     51 -171.  -14.3
+     2 B*15:03 Australia New South Wales Caucasian 0.004   134  146   -33  
+     3 B*15:03 Australia Yuendumu Aborigine        0       191  132.  -22.2
+     4 B*15:03 Azores Central Islands              0.009    59  -28    38  
+     5 B*15:03 Azores Oriental Islands             0        43  -25.1  37.0
+     6 B*15:03 Azores Terceira Island              0.024   130  -27.3  38.7
+     7 B*15:03 Brazil  Puyanawa                    0.037   150  -53.1 -10.9
+     8 B*15:03 Brazil Belo Horizonte Caucasian     0.032    95  -43.9 -19.9
+     9 B*15:03 Brazil Mixed                        0.014   108  -47.8 -23.2
+    10 B*15:03 Brazil Vale do Ribeira Quilombos    0       144  -48.2 -24.6
+    # … with 1,052 more rows
+
+E então, quando há diferentes amostras para a mesma localização
+(latitude e longitude), vamos calcular uma média da frequência ponderada
+pelo tamanho amostral.
+
+``` r
+allele_freqs_final <- allele_freqs_tidy %>%
+    group_by(allele, long, lat) %>%
+    summarise(f = weighted.mean(f, n),
+              n = sum(n)) %>%
+    ungroup()
+```
+
+#### Gráficos
+
 Os pontos de cada amostragem são projetados no mapa. Para pontos muito
-próximos, é tomada uma média das frequências.
+próximos, é tomada uma média das frequências (em bins).
 
 ``` r
 world <- map_data("world")
 
-plot_list <- map(allele_freqs, plotmap)
+plot_list <- allele_freqs_final %>%
+    split(.$allele) %>%
+    map(plotmap)
 
-cowplot::plot_grid(plotlist = plot_list, ncol = 2)
+hlamap <- cowplot::plot_grid(plotlist = plot_list, ncol = 2)
+ggsave("frequency.png", hlamap, dpi = 300, width = 7, height = 5)
+knitr::include_graphics("frequency.png")
 ```
 
-![](HLApeloMundo_files/figure-gfm/plot-1.png)<!-- -->
+![](frequency.png)<!-- -->
