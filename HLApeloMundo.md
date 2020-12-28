@@ -10,15 +10,16 @@ library(rvest)
 
 ``` r
 # obter frequências alélicas do allelefrequencies.net
-get_frequency <- function(allele) {
+get_frequency <- function(alleles) {
+    
+    palleles <- paste(alleles, collapse = ",")
     
     hlaurl <- 
-        "http://www.allelefrequencies.net/hla6006a_scr.asp?hla_selection=%s"
+        "http://www.allelefrequencies.net/hla6006a_scr.asp?hla_selection=" %>%
+        paste0(palleles)
 
-    hlahtml <- hlaurl %>%
-        sprintf(sub("HLA-", "", allele)) %>%
-        read_html()
-    
+    hlahtml <- read_html(hlaurl)
+
     nodes <- html_nodes(hlahtml, "table")
     
     nodes[[3]] %>%
@@ -29,7 +30,8 @@ get_frequency <- function(allele) {
                f = `Allele Frequency`,
                n = `Sample Size`,
                location = Location) %>%
-        mutate(n = as.integer(gsub(",", "", n)))
+        mutate(n = as.integer(gsub(",", "", n)),
+               allele = factor(allele, levels = alleles))
 }
 
 # plotar mapa com hexagonos
@@ -39,8 +41,7 @@ plotmap <- function(df_x) {
                  aes(long, lat, map_id = region),
                  color = "white", fill = "grey85", size = .1) +
         stat_summary_hex(data = df_x, 
-                         aes(long, lat, z = f),
-                         bins = 50) +
+                         aes(long, lat, z = f)) +
         scale_fill_continuous(NULL, type = "viridis",
                               labels = scales::percent,
                               breaks = scales::pretty_breaks(3),
@@ -69,27 +70,27 @@ fenotípicas assumindo proporções Hardy-Weinberg, apenas as obtidas
 diretamente.
 
 ``` r
-allele_freqs <- c("B*15:03", "A*24:02", "B*14:02", "B*46:01") %>%
-    map_df(get_frequency) %>%
-    drop_na() %>%
-    mutate(allele = fct_inorder(allele))
+alleles <- c("B*15:03", "A*24:02", "B*14:02", "B*46:01")
+
+allele_freqs <- get_frequency(alleles) %>%
+    drop_na()
 
 allele_freqs
 ```
 
     # A tibble: 1,062 x 5
-       allele  pop                                     f     n location        
-       <fct>   <chr>                               <dbl> <int> <chr>           
-     1 B*15:03 American Samoa                      0.01     51 14_18_S_170_42_W
-     2 B*15:03 Australia New South Wales Caucasian 0.004   134 33_0_S_146_0_E  
-     3 B*15:03 Australia Yuendumu Aborigine        0       191 22_15_S_131_47_E
-     4 B*15:03 Azores Central Islands              0.009    59 38_0_N_28_0_W   
-     5 B*15:03 Azores Oriental Islands             0        43 36_58_N_25_6_W  
-     6 B*15:03 Azores Terceira Island              0.024   130 38_44_N_27_19_W 
-     7 B*15:03 Brazil  Puyanawa                    0.037   150 10_52_S_53_5_W  
-     8 B*15:03 Brazil Belo Horizonte Caucasian     0.032    95 19_55_S_43_56_W 
-     9 B*15:03 Brazil Mixed                        0.014   108 23_10_S_47_48_W 
-    10 B*15:03 Brazil Vale do Ribeira Quilombos    0       144 24_36_S_48_15_W 
+       allele  pop                                          f     n location        
+       <fct>   <chr>                                    <dbl> <int> <chr>           
+     1 A*24:02 American Samoa                           0.33     51 14_18_S_170_42_W
+     2 A*24:02 Argentina Gran Chaco Eastern Toba        0.048   135 26_11_S_58_11_W 
+     3 A*24:02 Argentina Gran Chaco Mataco Wichi        0.102    49 27_27_S_58_59_W 
+     4 A*24:02 Argentina Gran Chaco Western Toba Pilaga 0        19 27_27_S_58_59_W 
+     5 A*24:02 Argentina Rosario Toba                   0.035    86 32_57_S_60_39_W 
+     6 A*24:02 Armenia combined Regions                 0.12    100 40_11_N_44_31_E 
+     7 A*24:02 Australia Cape York Peninsula Aborigine  0.223   103 10_41_S_142_32_E
+     8 A*24:02 Australia Groote Eylandt Aborigine       0.293    75 13_58_S_136_35_E
+     9 A*24:02 Australia Kimberly Aborigine             0.083    41 15_46_S_128_44_E
+    10 A*24:02 Australia New South Wales Caucasian      0.082   134 33_0_S_146_0_E  
     # … with 1,052 more rows
 
 Vamos fazer algumas transformações no dado.
@@ -113,18 +114,18 @@ allele_freqs_tidy
 ```
 
     # A tibble: 1,062 x 6
-       allele  pop                                     f     n   long   lat
-       <fct>   <chr>                               <dbl> <int>  <dbl> <dbl>
-     1 B*15:03 American Samoa                      0.01     51 -171.  -14.3
-     2 B*15:03 Australia New South Wales Caucasian 0.004   134  146   -33  
-     3 B*15:03 Australia Yuendumu Aborigine        0       191  132.  -22.2
-     4 B*15:03 Azores Central Islands              0.009    59  -28    38  
-     5 B*15:03 Azores Oriental Islands             0        43  -25.1  37.0
-     6 B*15:03 Azores Terceira Island              0.024   130  -27.3  38.7
-     7 B*15:03 Brazil  Puyanawa                    0.037   150  -53.1 -10.9
-     8 B*15:03 Brazil Belo Horizonte Caucasian     0.032    95  -43.9 -19.9
-     9 B*15:03 Brazil Mixed                        0.014   108  -47.8 -23.2
-    10 B*15:03 Brazil Vale do Ribeira Quilombos    0       144  -48.2 -24.6
+       allele  pop                                          f     n   long   lat
+       <fct>   <chr>                                    <dbl> <int>  <dbl> <dbl>
+     1 A*24:02 American Samoa                           0.33     51 -171.  -14.3
+     2 A*24:02 Argentina Gran Chaco Eastern Toba        0.048   135  -58.2 -26.2
+     3 A*24:02 Argentina Gran Chaco Mataco Wichi        0.102    49  -59.0 -27.4
+     4 A*24:02 Argentina Gran Chaco Western Toba Pilaga 0        19  -59.0 -27.4
+     5 A*24:02 Argentina Rosario Toba                   0.035    86  -60.6 -33.0
+     6 A*24:02 Armenia combined Regions                 0.12    100   44.5  40.2
+     7 A*24:02 Australia Cape York Peninsula Aborigine  0.223   103  143.  -10.7
+     8 A*24:02 Australia Groote Eylandt Aborigine       0.293    75  137.  -14.0
+     9 A*24:02 Australia Kimberly Aborigine             0.083    41  129.  -15.8
+    10 A*24:02 Australia New South Wales Caucasian      0.082   134  146   -33  
     # … with 1,052 more rows
 
 E então, quando há diferentes amostras para a mesma localização
