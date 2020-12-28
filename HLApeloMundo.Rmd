@@ -16,15 +16,16 @@ library(rvest)
 
 ```{r functions}
 # obter frequências alélicas do allelefrequencies.net
-get_frequency <- function(allele) {
+get_frequency <- function(alleles) {
+    
+    palleles <- paste(alleles, collapse = ",")
     
     hlaurl <- 
-        "http://www.allelefrequencies.net/hla6006a_scr.asp?hla_selection=%s"
+        "http://www.allelefrequencies.net/hla6006a_scr.asp?hla_selection=" %>%
+        paste0(palleles)
 
-    hlahtml <- hlaurl %>%
-        sprintf(sub("HLA-", "", allele)) %>%
-        read_html()
-    
+    hlahtml <- read_html(hlaurl)
+
     nodes <- html_nodes(hlahtml, "table")
     
     nodes[[3]] %>%
@@ -35,7 +36,8 @@ get_frequency <- function(allele) {
                f = `Allele Frequency`,
                n = `Sample Size`,
                location = Location) %>%
-        mutate(n = as.integer(gsub(",", "", n)))
+        mutate(n = as.integer(gsub(",", "", n)),
+               allele = factor(allele, levels = alleles))
 }
 
 # plotar mapa com hexagonos
@@ -72,10 +74,10 @@ As frequências são capturadas do site do allelefrequencies.net.
 Não são consideradas frequências calculadas a partir de frequências fenotípicas assumindo proporções Hardy-Weinberg, apenas as obtidas diretamente. 
 
 ```{r data}
-allele_freqs <- c("B*15:03", "A*24:02", "B*14:02", "B*46:01") %>%
-    map_df(get_frequency) %>%
-    drop_na() %>%
-    mutate(allele = fct_inorder(allele))
+alleles <- c("B*15:03", "A*24:02", "B*14:02", "B*46:01")
+
+allele_freqs <- get_frequency(alleles) %>%
+    drop_na()
 
 allele_freqs
 ```

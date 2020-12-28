@@ -39,7 +39,8 @@ plotmap <- function(df_x) {
                  aes(long, lat, map_id = region),
                  color = "white", fill = "grey85", size = .1) +
         stat_summary_hex(data = df_x, 
-                         aes(long, lat, z = f)) +
+                         aes(long, lat, z = f),
+                         bins = 50) +
         scale_fill_continuous(NULL, type = "viridis",
                               labels = scales::percent,
                               breaks = scales::pretty_breaks(3),
