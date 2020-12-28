@@ -1,12 +1,16 @@
 HLA pelo mundo
 ================
 
+### Pacotes utilizados
+
 ``` r
 library(tidyverse)
 library(rvest)
 #instalações também requeridas: 
 # install.packages(c("hexbin", "cowplot", "maps"))
 ```
+
+### Funções
 
 ``` r
 # obter frequências alélicas do allelefrequencies.net
@@ -61,7 +65,7 @@ plotmap <- function(df_x) {
 }
 ```
 
-#### Obter as frequências alélicas
+### Obter as frequências alélicas
 
 As frequências são capturadas do site do allelefrequencies.net.
 
@@ -140,7 +144,7 @@ allele_freqs_final <- allele_freqs_tidy %>%
     ungroup()
 ```
 
-#### Gráficos
+### Gráficos
 
 Os pontos de cada amostragem são projetados no mapa. Para pontos muito
 próximos, é tomada uma média das frequências (em bins).
