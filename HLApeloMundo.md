@@ -46,12 +46,12 @@ plotmap <- function(df_x) {
                  color = "white", fill = "grey85", size = .1) +
         stat_summary_hex(data = df_x, 
                          aes(long, lat, z = f)) +
-        scale_fill_continuous(NULL, type = "viridis",
-                              labels = scales::percent,
-                              breaks = scales::pretty_breaks(3),
-                              guide = guide_colourbar(direction = "horizontal",
-                                                      barwidth = 10,
-                                                      barheight = .25)) +
+        scale_fill_gradient(NULL,
+                            labels = scales::percent,
+                            breaks = scales::pretty_breaks(3),
+                            guide = guide_colourbar(direction = "horizontal",
+                                                    barwidth = 10,
+                                                    barheight = .25)) +
         facet_wrap(~allele, ncol = 2) +
         theme_bw() +
         theme(axis.ticks = element_blank(),
@@ -149,6 +149,8 @@ allele_freqs_final <- allele_freqs_tidy %>%
 Os pontos de cada amostragem são projetados no mapa. Para pontos muito
 próximos, é tomada uma média das frequências (em bins).
 
+#### Opção 1
+
 ``` r
 world <- map_data("world")
 
@@ -157,8 +159,29 @@ plot_list <- allele_freqs_final %>%
     map(plotmap)
 
 hlamap <- cowplot::plot_grid(plotlist = plot_list, ncol = 2)
-ggsave("frequency.png", hlamap, dpi = 300, width = 7, height = 5)
+ggsave("frequency.png", hlamap, dpi = 600, width = 7, height = 5)
 knitr::include_graphics("frequency.png")
 ```
 
 ![](frequency.png)<!-- -->
+
+#### Opção 2
+
+``` r
+plot_list2 <- allele_freqs_final %>%
+    split(.$allele) %>%
+    map(~plotmap(.) + 
+            scale_fill_distiller(NULL, palette ="RdBu", 
+                                 direction = -1,
+                                 labels = scales::percent,
+                                 breaks = scales::pretty_breaks(3),
+                                 guide = guide_colourbar(direction = "horizontal",
+                                                         barwidth = 10,
+                                                         barheight = .25)))
+
+hlamap2 <- cowplot::plot_grid(plotlist = plot_list2, ncol = 2)
+ggsave("frequency2.png", hlamap2, dpi = 600, width = 7, height = 5)
+knitr::include_graphics("frequency2.png")
+```
+
+![](frequency2.png)<!-- -->
