@@ -51,7 +51,7 @@ plotmap <- function(df_x) {
     ggplot() +
         geom_map(data = world, map = world,
                  aes(long, lat, map_id = region),
-                 color = "white", fill = "grey85", size = .1) +
+                 color = "white", fill = "grey80", size = .1) +
         stat_summary_hex(data = df_x, 
                          aes(long, lat, z = f)) +
         scale_fill_gradient(NULL,
@@ -141,13 +141,14 @@ knitr::include_graphics("frequency.png")
 plot_list2 <- allele_freqs_final %>%
     split(.$allele) %>%
     map(~plotmap(.) + 
-            scale_fill_distiller(NULL, palette ="RdBu", 
-                                 direction = -1,
+            ggthemes::scale_fill_gradient2_tableau(trans = "reverse",
                                  labels = scales::percent,
                                  breaks = scales::pretty_breaks(3),
                                  guide = guide_colourbar(direction = "horizontal",
+                                                         reverse = TRUE,
                                                          barwidth = 10,
-                                                         barheight = .25)))
+                                                         barheight = .25)) +
+        labs(fill = NULL))
 
 hlamap2 <- cowplot::plot_grid(plotlist = plot_list2, ncol = 2)
 ggsave("frequency2.png", hlamap2, dpi = 600, width = 7, height = 5)
