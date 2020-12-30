@@ -7,7 +7,7 @@ HLA pelo mundo
 library(tidyverse)
 library(rvest)
 #instalações também requeridas: 
-# install.packages(c("hexbin", "cowplot", "maps"))
+# install.packages(c("hexbin", "cowplot", "maps", "ggthemes"))
 ```
 
 ### Funções
@@ -43,15 +43,16 @@ plotmap <- function(df_x) {
     ggplot() +
         geom_map(data = world, map = world,
                  aes(long, lat, map_id = region),
-                 color = "white", fill = "grey80", size = .1) +
+                 color = "white", fill = "#b6a19e", alpha = .25, size = .05) +
         stat_summary_hex(data = df_x, 
-                         aes(long, lat, z = f)) +
-        scale_fill_gradient(NULL,
-                            labels = scales::percent,
-                            breaks = scales::pretty_breaks(3),
-                            guide = guide_colourbar(direction = "horizontal",
-                                                    barwidth = 10,
-                                                    barheight = .25)) +
+                         aes(long, lat, z = f), 
+                         color = "black", size = .05) +
+        ggthemes::scale_fill_gradient_tableau("Blue",
+                                               labels = function(x) scales::percent(x, accuracy=1),
+                                               breaks = scales::pretty_breaks(3),
+                                               guide = guide_colourbar(direction = "horizontal",
+                                                                       barwidth = 10,
+                                                                       barheight = .25)) +
         facet_wrap(~allele, ncol = 2) +
         theme_bw() +
         theme(axis.ticks = element_blank(),
@@ -61,7 +62,8 @@ plotmap <- function(df_x) {
               legend.position = "bottom",
               legend.margin = margin(0, 0, 0, 0),
               legend.box.margin = margin(-10, -10, 0, -10),
-              text = element_text(size = 14, family = "Times"))
+              text = element_text(size = 14, family = "Times")) +
+        labs(fill = NULL)
 }
 ```
 
@@ -149,8 +151,6 @@ allele_freqs_final <- allele_freqs_tidy %>%
 Os pontos de cada amostragem são projetados no mapa. Para pontos muito
 próximos, é tomada uma média das frequências (em bins).
 
-#### Opção 1
-
 ``` r
 world <- map_data("world")
 
@@ -164,87 +164,3 @@ knitr::include_graphics("frequency.png")
 ```
 
 ![](frequency.png)<!-- -->
-
-#### Opção 2
-
-``` r
-plotmap2 <- function(df_x) {
-    ggplot() +
-        geom_map(data = world, map = world,
-                 aes(long, lat, map_id = region),
-                 color = "white", fill = "grey80", size = .1) +
-        stat_summary_hex(data = df_x, 
-                         aes(long, lat, z = f)) +
-        ggthemes::scale_fill_gradient2_tableau(trans = "reverse",
-                                               labels = scales::percent,
-                                               breaks = scales::pretty_breaks(3),
-                                               guide = guide_colourbar(direction = "horizontal",
-                                                                       reverse = TRUE,
-                                                                       barwidth = 10,
-                                                                       barheight = .25)) +
-        facet_wrap(~allele, ncol = 2) +
-        theme_bw() +
-        theme(axis.ticks = element_blank(),
-              axis.text = element_blank(),
-              axis.title = element_blank(),
-              panel.grid = element_blank(),
-              legend.position = "bottom",
-              legend.margin = margin(0, 0, 0, 0),
-              legend.box.margin = margin(-10, -10, 0, -10),
-              text = element_text(size = 14, family = "Times")) +
-        labs(fill = NULL)
-}
-
-plot_list2 <- allele_freqs_final %>%
-    split(.$allele) %>%
-    map(plotmap2)
-
-hlamap2 <- cowplot::plot_grid(plotlist = plot_list2, ncol = 2)
-ggsave("frequency2.png", hlamap2, dpi = 600, width = 7, height = 5)
-knitr::include_graphics("frequency2.png")
-```
-
-![](frequency2.png)<!-- -->
-
-#### Opção 3
-
-``` r
-plotmap3 <- function(df_x) {
-    ggplot() +
-        geom_map(data = world, map = world,
-                 aes(long, lat, map_id = region),
-                 color = "grey80", fill = "antiquewhite", alpha = .5, size = .1) +
-        stat_summary_hex(data = df_x, 
-                         aes(long, lat, z = f), color = "grey50", size = .15) +
-        ggthemes::scale_fill_gradient2_tableau("Red-Black Diverging", 
-                                               trans = "reverse",
-                                               labels = scales::percent,
-                                               breaks = scales::pretty_breaks(3),
-                                               guide = guide_colourbar(direction = "horizontal",
-                                                                       reverse = TRUE,
-                                                                       barwidth = 10,
-                                                                       barheight = .25)) +
-        facet_wrap(~allele, ncol = 2) +
-        theme_bw() +
-        theme(axis.ticks = element_blank(),
-              axis.text = element_blank(),
-              axis.title = element_blank(),
-              panel.grid = element_blank(),
-              panel.background = element_rect(fill = "aliceblue"),
-              legend.position = "bottom",
-              legend.margin = margin(0, 0, 0, 0),
-              legend.box.margin = margin(-10, -10, 0, -10),
-              text = element_text(size = 14, family = "Times")) +
-        labs(fill = NULL)
-}
-
-plot_list3 <- allele_freqs_final %>%
-    split(.$allele) %>%
-    map(plotmap3)
-
-hlamap3 <- cowplot::plot_grid(plotlist = plot_list3, ncol = 2)
-ggsave("frequency3.png", hlamap3, dpi = 600, width = 7, height = 5)
-knitr::include_graphics("frequency3.png")
-```
-
-![](frequency3.png)<!-- -->
