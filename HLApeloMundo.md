@@ -17,16 +17,12 @@ library(rvest)
 get_frequency <- function(alleles) {
     
     palleles <- paste(alleles, collapse = ",")
-    
-    hlaurl <- 
-        "http://www.allelefrequencies.net/hla6006a_scr.asp?hla_selection=" %>%
-        paste0(palleles)
 
-    hlahtml <- read_html(hlaurl)
+    hlahtml <- "http://www.allelefrequencies.net/hla6006a_scr.asp?hla_selection=" %>%
+        paste0(palleles) %>%
+        read_html()
 
-    nodes <- html_nodes(hlahtml, "table")
-    
-    nodes[[3]] %>%
+    html_node(hlahtml, "table.tblNormal") %>%
         html_table(fill = TRUE, header = TRUE) %>%
         as_tibble() %>%
         select(allele = Allele, 

@@ -25,16 +25,12 @@ library(rvest)
 get_frequency <- function(alleles) {
     
     palleles <- paste(alleles, collapse = ",")
-    
-    hlaurl <- 
-        "http://www.allelefrequencies.net/hla6006a_scr.asp?hla_selection=" %>%
-        paste0(palleles)
 
-    hlahtml <- read_html(hlaurl)
+    hlahtml <- "http://www.allelefrequencies.net/hla6006a_scr.asp?hla_selection=" %>%
+        paste0(palleles) %>%
+        read_html()
 
-    nodes <- html_nodes(hlahtml, "table")
-    
-    nodes[[3]] %>%
+    html_node(hlahtml, "table.tblNormal") %>%
         html_table(fill = TRUE, header = TRUE) %>%
         as_tibble() %>%
         select(allele = Allele, 
@@ -56,11 +52,11 @@ plotmap <- function(df_x) {
                          aes(long, lat, z = f), 
                          color = "black", size = .05) +
         ggthemes::scale_fill_gradient_tableau("Blue",
-                                               labels = function(x) scales::percent(x, accuracy=1),
-                                               breaks = scales::pretty_breaks(3),
-                                               guide = guide_colourbar(direction = "horizontal",
-                                                                       barwidth = 10,
-                                                                       barheight = .25)) +
+                                              labels = function(x) scales::percent(x, accuracy=1),
+                                              breaks = scales::pretty_breaks(3),
+                                              guide = guide_colourbar(direction = "horizontal",
+                                                                      barwidth = 10,
+                                                                      barheight = .25)) +
         facet_wrap(~allele, ncol = 2) +
         theme_bw() +
         theme(axis.ticks = element_blank(),
