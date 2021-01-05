@@ -13,8 +13,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, comment = "
 ```{r pkgs}
 library(tidyverse)
 library(rvest)
-#instalações também requeridas: 
-# install.packages(c("hexbin", "cowplot", "maps", "ggthemes"))
+#instalações também requeridas para o gráfico: 
+#install.packages(c("hexbin", "cowplot", "maps"))
 ```
 
 
@@ -47,16 +47,16 @@ plotmap <- function(df_x) {
     ggplot() +
         geom_map(data = world, map = world,
                  aes(long, lat, map_id = region),
-                 color = "white", fill = "#b6a19e", alpha = .25, size = .05) +
+                 color = "white", fill = "#b6a19e", alpha = .5, size = .05) +
         stat_summary_hex(data = df_x, 
                          aes(long, lat, z = f), 
-                         color = "black", size = .05) +
-        ggthemes::scale_fill_gradient_tableau("Blue",
-                                              labels = function(x) scales::percent(x, accuracy=1),
-                                              breaks = scales::pretty_breaks(3),
-                                              guide = guide_colourbar(direction = "horizontal",
-                                                                      barwidth = 10,
-                                                                      barheight = .25)) +
+                         color = "black", size = .15) +
+        scale_fill_continuous(type = "viridis",
+                              labels = function(x) scales::percent(x, accuracy=1),
+                              breaks = scales::pretty_breaks(3),
+                              guide = guide_colorbar(direction = "horizontal",
+                                                     barwidth = 10,
+                                                     barheight = .25)) +
         facet_wrap(~allele, ncol = 2) +
         theme_bw() +
         theme(axis.ticks = element_blank(),
@@ -70,6 +70,36 @@ plotmap <- function(df_x) {
         labs(fill = NULL)
 }
 ```
+
+```{r, echo=FALSE}
+# plotmap <- function(df_x) {
+#     ggplot() +
+#         geom_map(data = world, map = world,
+#                  aes(long, lat, map_id = region),
+#                  color = "white", fill = "#b6a19e", alpha = .25, size = .05) +
+#         stat_summary_hex(data = df_x, 
+#                          aes(long, lat, z = f), 
+#                          color = "black", size = .05) +
+#         ggthemes::scale_fill_gradient_tableau("Blue",
+#                                               labels = function(x) scales::percent(x, accuracy=1),
+#                                               breaks = scales::pretty_breaks(3),
+#                                               guide = guide_colourbar(direction = "horizontal",
+#                                                                       barwidth = 10,
+#                                                                       barheight = .25)) +
+#         facet_wrap(~allele, ncol = 2) +
+#         theme_bw() +
+#         theme(axis.ticks = element_blank(),
+#               axis.text = element_blank(),
+#               axis.title = element_blank(),
+#               panel.grid = element_blank(),
+#               legend.position = "bottom",
+#               legend.margin = margin(0, 0, 0, 0),
+#               legend.box.margin = margin(-10, -10, 0, -10),
+#               text = element_text(size = 14, family = "Times")) +
+#         labs(fill = NULL)
+# }
+```
+
 
 ### Obter as frequências alélicas
 
@@ -105,10 +135,17 @@ allele_freqs_tidy <- allele_freqs %>%
 allele_freqs_tidy
 ```
 
-E então, quando há diferentes amostras para a mesma localização (latitude e longitude), vamos calcular uma média da frequência ponderada pelo tamanho amostral.
+Finalmente, acrescentamos as frequências dos dados do 1000G e SABE obtidas pelo Erick.
+
+E, quando há diferentes amostras para a mesma localização (latitude e longitude), vamos calcular uma média da frequência ponderada pelo tamanho amostral.
 
 ```{r}
-allele_freqs_final <- allele_freqs_tidy %>%
+sabe_1000G <- read_tsv("./data/SABE_1000G_freqs.tsv") %>%
+    pivot_longer(-(1:4), names_to = "allele", values_to = "f") %>%
+    select(allele, pop = population, f, n, long = Long, lat = Lat) %>%
+    mutate(allele = factor(allele, levels = levels(allele_freqs_tidy$allele)))
+
+allele_freqs_final <- bind_rows(allele_freqs_tidy, sabe_1000G) %>%
     group_by(allele, long, lat) %>%
     summarise(f = weighted.mean(f, n),
               n = sum(n)) %>%
@@ -131,3 +168,5 @@ hlamap <- cowplot::plot_grid(plotlist = plot_list, ncol = 2)
 ggsave("frequency.png", hlamap, dpi = 600, width = 7, height = 5)
 knitr::include_graphics("frequency.png")
 ```
+
+

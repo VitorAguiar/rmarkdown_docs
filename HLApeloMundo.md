@@ -6,8 +6,8 @@ HLA pelo mundo
 ``` r
 library(tidyverse)
 library(rvest)
-#instalações também requeridas: 
-# install.packages(c("hexbin", "cowplot", "maps", "ggthemes"))
+#instalações também requeridas para o gráfico: 
+#install.packages(c("hexbin", "cowplot", "maps"))
 ```
 
 ### Funções
@@ -39,16 +39,16 @@ plotmap <- function(df_x) {
     ggplot() +
         geom_map(data = world, map = world,
                  aes(long, lat, map_id = region),
-                 color = "white", fill = "#b6a19e", alpha = .25, size = .05) +
+                 color = "white", fill = "#b6a19e", alpha = .5, size = .05) +
         stat_summary_hex(data = df_x, 
                          aes(long, lat, z = f), 
-                         color = "black", size = .05) +
-        ggthemes::scale_fill_gradient_tableau("Blue",
-                                               labels = function(x) scales::percent(x, accuracy=1),
-                                               breaks = scales::pretty_breaks(3),
-                                               guide = guide_colourbar(direction = "horizontal",
-                                                                       barwidth = 10,
-                                                                       barheight = .25)) +
+                         color = "black", size = .15) +
+        scale_fill_continuous(type = "viridis",
+                              labels = function(x) scales::percent(x, accuracy=1),
+                              breaks = scales::pretty_breaks(3),
+                              guide = guide_colorbar(direction = "horizontal",
+                                                     barwidth = 10,
+                                                     barheight = .25)) +
         facet_wrap(~allele, ncol = 2) +
         theme_bw() +
         theme(axis.ticks = element_blank(),
@@ -130,12 +130,20 @@ allele_freqs_tidy
     10 A*24:02 Australia New South Wales Caucasian      0.082   134  146   -33  
     # … with 1,052 more rows
 
-E então, quando há diferentes amostras para a mesma localização
-(latitude e longitude), vamos calcular uma média da frequência ponderada
-pelo tamanho amostral.
+Finalmente, acrescentamos as frequências dos dados do 1000G e SABE
+obtidas pelo Erick.
+
+E, quando há diferentes amostras para a mesma localização (latitude e
+longitude), vamos calcular uma média da frequência ponderada pelo
+tamanho amostral.
 
 ``` r
-allele_freqs_final <- allele_freqs_tidy %>%
+sabe_1000G <- read_tsv("./data/SABE_1000G_freqs.tsv") %>%
+    pivot_longer(-(1:4), names_to = "allele", values_to = "f") %>%
+    select(allele, pop = population, f, n, long = Long, lat = Lat) %>%
+    mutate(allele = factor(allele, levels = levels(allele_freqs_tidy$allele)))
+
+allele_freqs_final <- bind_rows(allele_freqs_tidy, sabe_1000G) %>%
     group_by(allele, long, lat) %>%
     summarise(f = weighted.mean(f, n),
               n = sum(n)) %>%
